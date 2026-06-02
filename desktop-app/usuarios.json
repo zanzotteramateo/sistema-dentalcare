@@ -1,0 +1,109 @@
+{
+    "usuarios": {
+        "dentalCare": {
+            "clave": "123456",
+            "perfil": "admin",
+            "id_socio": null
+        },
+        "zanzotteram@dentalcare.com": {
+            "clave": "5555",
+            "perfil": "medico",
+            "id_socio": null
+        },
+        "gomezl@dentalcare.com": {
+            "clave": "8888",
+            "perfil": "medico",
+            "id_socio": null
+        },
+        "sanchezm@dentalcare.com": {
+            "clave": "4444",
+            "perfil": "medico",
+            "id_socio": null
+        },
+        "federico@gmail.com": {
+            "clave": "9999",
+            "perfil": "paciente",
+            "id_socio": 1
+        },
+        "marina@gmail.com": {
+            "clave": "2222",
+            "perfil": "paciente",
+            "id_socio": 2
+        },
+        "luca@gmail.com": {
+            "clave": "6666",
+            "perfil": "paciente",
+            "id_socio": 3
+        }
+    },
+    "doctores": [
+        {
+            "id": 1,
+            "nombre": "mateo",
+            "apellido": "zanzottera",
+            "tratamiento": "Arreglo de caries",
+            "usuario": "zanzotteram@dentalcare.com"
+        },
+        {
+            "id": 2,
+            "nombre": "Leandro",
+            "apellido": "Gomez",
+            "tratamiento": "Control",
+            "usuario": "gomezl@dentalcare.com"
+        },
+        {
+            "id": 3,
+            "nombre": "Martina",
+            "apellido": "Sanchez",
+            "tratamiento": "Ortodoncia",
+            "usuario": "sanchezm@dentalcare.com"
+        }
+    ],
+    "turnos": [
+        {
+            "id": 1,
+            "nombre": "Federico",
+            "apellido": "Gomez",
+            "socio": 1,
+            "horario": "2026-06-15 10:30",
+            "tratamiento": "Control",
+            "doctor_asignado": "Leandro Gomez (ID: 2)"
+        },
+        {
+            "id": 3,
+            "nombre": "Marina",
+            "apellido": "Dobarro",
+            "socio": 2,
+            "horario": "2026-06-18 13:00",
+            "tratamiento": "Control",
+            "doctor_asignado": "Leandro Gomez (ID: 2)"
+        },
+        {
+            "id": 2,
+            "nombre": "Federico",
+            "apellido": "Gomez",
+            "socio": 1,
+            "horario": "2026-06-20 11:00",
+            "tratamiento": "Arreglo de caries",
+            "doctor_asignado": "Mateo Zanzottera (ID: 1)"
+        },
+        {
+            "id": 4,
+            "nombre": "Luca",
+            "apellido": "Mato",
+            "socio": 3,
+            "horario": "2026-06-22 12:00",
+            "tratamiento": "Ortodoncia",
+            "doctor_asignado": "Martina Sanchez (ID: 3)"
+        },
+        {
+            "id": 5,
+            "nombre": "Federico",
+            "apellido": "Gomez",
+            "socio": 1,
+            "horario": "2026-07-05 15:30",
+            "tratamiento": "Control",
+            "doctor_asignado": "Leandro Gomez (ID: 2)"
+        }
+    ]
+}

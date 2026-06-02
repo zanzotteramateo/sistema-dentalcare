@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Registro - DentalCare Web</title>
+</head>
+<body>
+    <h1>Crear una cuenta nueva</h1>
+    
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <ul style="color: red;">
+        {% for message in messages %}
+          <li>{{ message }}</li>
+        {% endfor %}
+        </ul>
+      {% endif %}
+    {% endwith %}
+
+    <form method="POST" action="/registro">
+        <div>
+            <label>Correo Electrónico (@gmail.com):</label>
+            <input type="email" name="usuario" required>
+        </div>
+        <br>
+        <div>
+            <label>Contraseña:</label>
+            <input type="password" name="clave" required>
+        </div>
+        <br>
+        <button type="submit">Registrarme</button>
+    </form>
+    
+    <br>
+    <a href="{{ url_for('login') }}">Ya tengo cuenta. Volver al Login.</a>
+</body>
+</html>

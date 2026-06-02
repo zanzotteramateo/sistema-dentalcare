@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Agregar Doctor - DentalCare</title>
+</head>
+<body>
+    <h1>Registrar Nuevo Doctor</h1>
+    <a href="{{ url_for('dashboard') }}">⬅ Volver al Panel</a>
+    <hr>
+
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <ul style="color: red;">
+        {% for message in messages %}
+          <li>{{ message }}</li>
+        {% endfor %}
+        </ul>
+      {% endif %}
+    {% endwith %}
+
+    <form method="POST" action="/agregar_doctor">
+        <div>
+            <label>Nombre:</label>
+            <input type="text" name="nombre" required>
+        </div><br>
+        
+        <div>
+            <label>Apellido:</label>
+            <input type="text" name="apellido" required>
+        </div><br>
+        
+        <div>
+            <label>Contraseña:</label>
+            <input type="password" name="clave" required>
+        </div><br>
+        
+        <div>
+            <label>Tratamiento / Especialidad:</label>
+            <select name="tratamiento" required>
+                {% for t in tratamientos %}
+                    <option value="{{ t }}">{{ t }}</option>
+                {% endfor %}
+            </select>
+        </div><br>
+        
+        <button type="submit">Agregar Doctor</button>
+    </form>
+</body>
+</html>

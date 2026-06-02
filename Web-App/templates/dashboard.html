@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Panel de Control - DentalCare</title>
+</head>
+<body>
+    <h1>Bienvenido, {{ usuario }}</h1>
+    <p>Has ingresado como: <strong>{{ perfil }}</strong></p>
+    
+    <hr>
+    
+    <h3>Acciones Disponibles</h3>
+    <ul>
+        {% if perfil == 'admin' or perfil == 'paciente' %}
+            <li><a href="{{ url_for('ingresar_turno') }}"><button>Ingresar Turno</button></a></li>
+        {% endif %}
+        
+        <li><a href="{{ url_for('ver_turnos') }}"><button>Ver Turnos</button></a></li>
+        
+        {% if perfil == 'admin' %}
+            <li><a href="{{ url_for('agregar_doctor') }}"><button>Agregar Doctor</button></a></li>
+            <li><button>Eliminar Doctor</button></li>
+        {% endif %}
+    </ul>
+    
+    <br>
+    <a href="{{ url_for('logout') }}">Cerrar Sesión</a>
+</body>
+</html>

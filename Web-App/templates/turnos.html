@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Turnos - DentalCare</title>
+</head>
+<body>
+    <h1>Visor de Turnos</h1>
+    <a href="{{ url_for('dashboard') }}">⬅ Volver al Panel</a>
+    <hr>
+    
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <ul style="color: blue;">
+        {% for message in messages %}
+          <li>{{ message }}</li>
+        {% endfor %}
+        </ul>
+      {% endif %}
+    {% endwith %}
+
+    <table border="1" cellpadding="10" cellspacing="0">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Fecha y Hora</th>
+                <th>Paciente (Socio)</th>
+                <th>Tratamiento</th>
+                <th>Doctor Asignado</th>
+                <th>Acciones</th> </tr>
+        </thead>
+        <tbody>
+            {% for turno in turnos %}
+            <tr>
+                <td>{{ turno.id }}</td>
+                <td>{{ turno.horario }}</td>
+                <td>{{ turno.nombre }} {{ turno.apellido }} (#{{ turno.socio }})</td>
+                <td>{{ turno.tratamiento }}</td>
+                <td>{{ turno.doctor }}</td>
+                <td>
+                    <form action="{{ url_for('eliminar_turno', id_turno=turno.id) }}" method="POST" onsubmit="return confirm('¿Seguro que deseas eliminar el turno de {{ turno.nombre }}?');">
+                        <button type="submit" style="color: red; cursor: pointer;">Eliminar</button>
+                    </form>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="6" style="text-align: center;">No hay turnos para mostrar.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>

@@ -1,0 +1,127 @@
+{
+    "doctores": {
+        "id": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+        ],
+        "nombres": [
+            "Matias",
+            "Leandro",
+            "Martina",
+            "Marcelo",
+            "Melanie",
+            "juan"
+        ],
+        "apellidos": [
+            "Saafigueroa",
+            "Gomez",
+            "Sanchez",
+            "Gimenez",
+            "Fernandez",
+            "perez"
+        ],
+        "tratamientos": [
+            "Arreglo de caries",
+            "Control",
+            "Ortodoncia",
+            "Extracci\u00f3n",
+            "Control",
+            "Extracci\u00f3n"
+        ],
+        "Usuario": [
+            "saafigueroam@dentalcare.com",
+            "gomezl@dentalcare.com",
+            "sanchezm@dentalcare.com",
+            "gimenezm@dentalcare.com",
+            "fernandezm@dentalcare.com",
+            "perezj@dentalcare.com"
+        ],
+        "Contrase\u00f1a": [
+            "5555",
+            "8888",
+            "4444",
+            "6666",
+            "7777",
+            "3333"
+        ]
+    },
+    "turnos": {
+        "nombres": [
+            "Federico",
+            "Federico",
+            "Marina",
+            "Luca",
+            "Federico"
+        ],
+        "apellidos": [
+            "Gomez",
+            "Gomez",
+            "Dobarro",
+            "Mato",
+            "Gimenez"
+        ],
+        "numeros_socios": [
+            1,
+            1,
+            2,
+            3,
+            4
+        ],
+        "horarios": [
+            "2025-09-08 10:30",
+            "2025-12-16 11:00",
+            "2025-08-14 13:00",
+            "2025-11-12 12:00",
+            "2025-12-07 15:30"
+        ],
+        "tratamientos": [
+            "Control",
+            "Arreglo de caries",
+            "Control",
+            "Control",
+            "Control"
+        ],
+        "doctor_asignado": [
+            "Leandro Gomez ( ID: 2)",
+            "Matias Saafigueroa ( ID: 1)",
+            "Leandro Gomez ( ID: 2)",
+            "Melanie Fernandez ( ID: 5)",
+            "Leandro Gomez ( ID: 2)"
+        ]
+    },
+    "recepcion": {
+        "nombres_recepcion": [],
+        "Contrase\u00f1a_recepcion": [],
+        "doctor": [],
+        "turnos": []
+    },
+    "paciente": {
+        "Usuario_socio": [
+            "federico@gmail.com",
+            "marina@gmail.com",
+            "Luca@gmail.com",
+            "Federico@gmail.com",
+            "martinDiaz@gmail.com"
+        ],
+        "Contrase\u00f1a_socio": [
+            "9999",
+            "2222",
+            "6666",
+            "4444",
+            "4444"
+        ],
+        "nombre": [],
+        "turnos": [],
+        "ids_socio": [
+            1,
+            2,
+            3,
+            4,
+            5
+        ]
+    }
+}

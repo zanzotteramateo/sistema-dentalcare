@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Ingresar Turno - DentalCare</title>
+</head>
+<body>
+    <h1>Nuevo Turno</h1>
+    <a href="{{ url_for('dashboard') }}">⬅ Volver al Panel</a>
+    <hr>
+
+    <form method="POST" action="/ingresar_turno">
+        <div>
+            <label>Nombre del Paciente:</label>
+            <input type="text" name="nombre" required>
+        </div><br>
+        
+        <div>
+            <label>Apellido del Paciente:</label>
+            <input type="text" name="apellido" required>
+        </div><br>
+
+        <div>
+            <label>Número de Socio:</label>
+            <input type="number" name="socio" required>
+        </div><br>
+
+        <div>
+            <label>Fecha del Turno:</label>
+            <input type="date" name="fecha" required>
+        </div><br>
+
+        <div>
+            <label>Horario:</label>
+            <input type="time" name="hora" step="1800" required>
+        </div><br>
+
+        <div>
+            <label>Tratamiento:</label>
+            <select name="tratamiento" required>
+                <option value="Control">Control</option>
+                <option value="Arreglo de caries">Arreglo de caries</option>
+                <option value="Ortodoncia">Ortodoncia</option>
+                <option value="Extracción">Extracción</option>
+            </select>
+        </div><br>
+
+        <div>
+            <label>Doctor Asignado:</label>
+            <select name="doctor" required>
+                {% for doc in doctores %}
+                    <option value="{{ doc }}">{{ doc }}</option>
+                {% endfor %}
+            </select>
+        </div><br>
+
+        <button type="submit">Guardar Turno</button>
+    </form>
+</body>
+</html>
