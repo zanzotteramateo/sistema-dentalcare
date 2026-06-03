@@ -20,7 +20,7 @@
         
         {% if perfil == 'admin' %}
             <li><a href="{{ url_for('agregar_doctor') }}"><button>Agregar Doctor</button></a></li>
-            <li><button>Eliminar Doctor</button></li>
+            <li><a href="{{ url_for('ver_doctores') }}"><button>Gestión de Doctores</button></a></li>
         {% endif %}
     </ul>
     

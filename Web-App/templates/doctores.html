@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Gestión de Doctores - DentalCare</title>
+</head>
+<body>
+    <h1>Plantel Médico</h1>
+    <a href="{{ url_for('dashboard') }}">⬅ Volver al Panel</a>
+    <hr>
+    
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <ul style="color: green; font-weight: bold;">
+        {% for message in messages %}
+          <li>{{ message }}</li>
+        {% endfor %}
+        </ul>
+      {% endif %}
+    {% endwith %}
+
+    <table border="1" cellpadding="10" cellspacing="0">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Nombre y Apellido</th>
+                <th>Especialidad</th>
+                <th>Usuario</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for doc in doctores %}
+            <tr>
+                <td>{{ doc.id }}</td>
+                <td>Dr/a. {{ doc.nombre }} {{ doc.apellido }}</td>
+                <td>{{ doc.tratamiento }}</td>
+                <td>{{ doc.usuario }}</td>
+                <td>
+                    <form action="{{ url_for('eliminar_doctor', id_doc=doc.id) }}" method="POST" onsubmit="return confirm('Se eliminará al Dr/a. {{ doc.apellido }}. ¿Estás seguro?');">
+                        <button type="submit" style="color: red; cursor: pointer;">Dar de baja</button>
+                    </form>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="5" style="text-align: center;">No hay doctores registrados.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>

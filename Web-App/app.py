@@ -328,5 +328,97 @@ def registro():
 
     return render_template('registro.html')
 
+@app.route('/doctores')
+def ver_doctores():
+    if 'usuario_actual' not in session or session.get('perfil_actual') != 'admin':
+        flash("Acceso denegado.")
+        return redirect(url_for('dashboard'))
+
+    with open("usuarios.json", "r") as f:
+        datos = json.load(f)
+        
+    doctores_data = datos.get("doctores", {})
+    lista_doctores = []
+    
+    # Armamos la lista para enviarla al HTML
+    for i in range(len(doctores_data.get("id", []))):
+        doc = {
+            "id": doctores_data["id"][i],
+            "nombre": doctores_data["nombres"][i],
+            "apellido": doctores_data["apellidos"][i],
+            "tratamiento": doctores_data["tratamientos"][i],
+            "usuario": doctores_data["Usuario"][i]
+        }
+        lista_doctores.append(doc)
+        
+    return render_template('doctores.html', doctores=lista_doctores)
+
+@app.route('/eliminar_doctor/<int:id_doc>', methods=['POST'])
+def eliminar_doctor(id_doc):
+    if 'usuario_actual' not in session or session.get('perfil_actual') != 'admin':
+        return redirect(url_for('dashboard'))
+        
+    with open("usuarios.json", "r") as f:
+        datos = json.load(f)
+        
+    doctores = datos.get("doctores", {})
+    turnos = datos.get("turnos", {})
+    
+    if id_doc not in doctores.get("id", []):
+        flash("Error: Doctor no encontrado.")
+        return redirect(url_for('ver_doctores'))
+        
+    # Encontramos la posición exacta del doctor a borrar en las listas
+    idx_doc = doctores["id"].index(id_doc)
+    tratamiento_elim = doctores["tratamientos"][idx_doc]
+    
+    # IMPORTANTE: Recreamos cómo figura escrito en los turnos
+    nombre_doc_elim = f"{doctores['nombres'][idx_doc]} {doctores['apellidos'][idx_doc]} ( ID: {id_doc})"
+    
+    # 1. Buscamos si existe OTRO doctor que haga el mismo tratamiento
+    otros_doctores_idx = [i for i, trat in enumerate(doctores["tratamientos"]) 
+                          if trat == tratamiento_elim and doctores["id"][i] != id_doc]
+                          
+    # 2. Buscamos los índices de los turnos que tenía asignado el doctor despedido
+    turnos_asignados_idx = [i for i, doc_asig in enumerate(turnos.get("doctor_asignado", [])) 
+                            if doc_asig == nombre_doc_elim]
+                            
+    mensaje = f"Doctor/a {doctores['apellidos'][idx_doc]} eliminado/a exitosamente."
+    
+    # Si el doctor tenía turnos pendientes, entra a la lógica de rescate
+    if turnos_asignados_idx:
+        if otros_doctores_idx:
+            # Hay reemplazo: le pasamos los turnos al primer doctor alternativo
+            nuevo_idx = otros_doctores_idx[0]
+            nuevo_doc_str = f"{doctores['nombres'][nuevo_idx]} {doctores['apellidos'][nuevo_idx]} ( ID: {doctores['id'][nuevo_idx]})"
+            
+            for i in turnos_asignados_idx:
+                turnos["doctor_asignado"][i] = nuevo_doc_str
+            mensaje += f" Se reasignaron {len(turnos_asignados_idx)} turno(s) automáticamente al Dr/a. {doctores['apellidos'][nuevo_idx]}."
+        else:
+            # No hay reemplazo: borramos los turnos afectados (de atrás hacia adelante para no romper los índices)
+            for i in sorted(turnos_asignados_idx, reverse=True):
+                turnos["nombres"].pop(i)
+                turnos["apellidos"].pop(i)
+                turnos["numeros_socios"].pop(i)
+                turnos["horarios"].pop(i)
+                turnos["tratamientos"].pop(i)
+                turnos["doctor_asignado"].pop(i)
+            mensaje += f" Se cancelaron {len(turnos_asignados_idx)} turno(s) porque no hay médicos disponibles para ese tratamiento."
+            
+    # Finalmente, borramos al doctor de todas las listas paralelas
+    doctores["id"].pop(idx_doc)
+    doctores["nombres"].pop(idx_doc)
+    doctores["apellidos"].pop(idx_doc)
+    doctores["tratamientos"].pop(idx_doc)
+    doctores["Usuario"].pop(idx_doc)
+    doctores["Contraseña"].pop(idx_doc)
+    
+    with open("usuarios.json", "w") as f:
+        json.dump(datos, f, indent=4)
+        
+    flash(mensaje)
+    return redirect(url_for('ver_doctores'))
+
 if __name__ == '__main__':
     app.run(debug=True, port=5000)

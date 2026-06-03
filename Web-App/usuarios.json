@@ -5,48 +5,42 @@
             2,
             3,
             4,
-            5,
-            6
+            5
         ],
         "nombres": [
             "Matias",
             "Leandro",
             "Martina",
             "Marcelo",
-            "Melanie",
-            "juan"
+            "Melanie"
         ],
         "apellidos": [
             "Saafigueroa",
             "Gomez",
             "Sanchez",
             "Gimenez",
-            "Fernandez",
-            "perez"
+            "Fernandez"
         ],
         "tratamientos": [
             "Arreglo de caries",
             "Control",
             "Ortodoncia",
             "Extracci\u00f3n",
-            "Control",
-            "Extracci\u00f3n"
+            "Control"
         ],
         "Usuario": [
             "saafigueroam@dentalcare.com",
             "gomezl@dentalcare.com",
             "sanchezm@dentalcare.com",
             "gimenezm@dentalcare.com",
-            "fernandezm@dentalcare.com",
-            "perezj@dentalcare.com"
+            "fernandezm@dentalcare.com"
         ],
         "Contrase\u00f1a": [
             "5555",
             "8888",
             "4444",
             "6666",
-            "7777",
-            "3333"
+            "7777"
         ]
     },
     "turnos": {
@@ -55,42 +49,48 @@
             "Federico",
             "Marina",
             "Luca",
-            "Federico"
+            "Federico",
+            "martin"
         ],
         "apellidos": [
             "Gomez",
             "Gomez",
             "Dobarro",
             "Mato",
-            "Gimenez"
+            "Gimenez",
+            "diaz"
         ],
         "numeros_socios": [
             1,
             1,
             2,
             3,
-            4
+            4,
+            5
         ],
         "horarios": [
             "2025-09-08 10:30",
             "2025-12-16 11:00",
             "2025-08-14 13:00",
             "2025-11-12 12:00",
-            "2025-12-07 15:30"
+            "2025-12-07 15:30",
+            "2026-07-18 15:00"
         ],
         "tratamientos": [
             "Control",
             "Arreglo de caries",
             "Control",
             "Control",
-            "Control"
+            "Control",
+            "Extracci\u00f3n"
         ],
         "doctor_asignado": [
             "Leandro Gomez ( ID: 2)",
             "Matias Saafigueroa ( ID: 1)",
             "Leandro Gomez ( ID: 2)",
             "Melanie Fernandez ( ID: 5)",
-            "Leandro Gomez ( ID: 2)"
+            "Leandro Gomez ( ID: 2)",
+            "Marcelo Gimenez ( ID: 4)"
         ]
     },
     "recepcion": {
