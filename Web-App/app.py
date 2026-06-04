@@ -1,54 +1,69 @@
 import json
 import os
 from flask import Flask, render_template, request, redirect, url_for, session, flash
+from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
-# Esta clave secreta es OBLIGATORIA para usar sesiones y mensajes temporales (flash)
-app.secret_key = 'tu_clave_secreta_super_segura' 
+app.secret_key = 'tu_clave_secreta_super_segura'
 
-def obtener_usuarios():
-    """Esta función reemplaza una parte de tu cargar_datos() de Tkinter"""
-    usuarios = {}
-    # Tu admin hardcodeado por defecto
-    usuarios["dentalCare"] = {"clave": "123456", "perfil": "admin"}
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:root@localhost/dentalcare_db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+db = SQLAlchemy(app)
+
+# --- MODELOS DE LA BASE DE DATOS ---
+
+class Usuario(db.Model):
+    __tablename__ = 'usuarios'
+    id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String(100), unique=True, nullable=False)
+    clave = db.Column(db.String(100), nullable=False)
+    perfil = db.Column(db.String(20), nullable=False) # 'admin', 'medico', 'paciente'
+
+class Doctor(db.Model):
+    __tablename__ = 'doctores'
+    id = db.Column(db.Integer, primary_key=True)
+    nombre = db.Column(db.String(50), nullable=False)
+    apellido = db.Column(db.String(50), nullable=False)
+    tratamiento = db.Column(db.String(50), nullable=False)
+    # Relacionamos al doctor con su cuenta de usuario
+    usuario_id = db.Column(db.Integer, db.ForeignKey('usuarios.id'), nullable=False)
+
+class Turno(db.Model):
+    __tablename__ = 'turnos'
+    id = db.Column(db.Integer, primary_key=True)
+    nombre_paciente = db.Column(db.String(50), nullable=False)
+    apellido_paciente = db.Column(db.String(50), nullable=False)
+    fecha_hora = db.Column(db.DateTime, nullable=False)
+    tratamiento = db.Column(db.String(50), nullable=False)
     
-    if not os.path.exists("usuarios.json"):
-        return usuarios
-        
-    with open("usuarios.json", "r") as f:
-        datos = json.load(f)
-        
-    # Cargar pacientes del JSON
-    for i, user in enumerate(datos.get("paciente", {}).get("Usuario_socio", [])):
-        clave = datos["paciente"]["Contraseña_socio"][i]
-        usuarios[user] = {"clave": clave, "perfil": "paciente"}
-        
-    # Cargar doctores del JSON
-    for i, user in enumerate(datos.get("doctores", {}).get("Usuario", [])):
-        clave = datos["doctores"]["Contraseña"][i]
-        usuarios[user] = {"clave": clave, "perfil": "medico"}
-        
-    return usuarios
+    # Claves foráneas: un turno pertenece a un paciente y a un doctor
+    paciente_id = db.Column(db.Integer, db.ForeignKey('usuarios.id'), nullable=False)
+    doctor_id = db.Column(db.Integer, db.ForeignKey('doctores.id'), nullable=False)
 
-# Le decimos a la ruta que acepte tanto entrar a ver la página (GET) como enviar el formulario (POST)
+
 @app.route('/', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        # request.form captura lo que el usuario escribió en los inputs del HTML
         usuario_ingresado = request.form.get('usuario')
         clave_ingresada = request.form.get('clave')
         
-        usuarios_db = obtener_usuarios()
+        # Le pedimos a MySQL que busque si existe un usuario con ese email
+        usuario_db = Usuario.query.filter_by(email=usuario_ingresado).first()
         
-        # Tu misma lógica de verificar_login()
-        if usuario_ingresado in usuarios_db and usuarios_db[usuario_ingresado]["clave"] == clave_ingresada:
-            # En vez de variables globales, guardamos en la sesión
-            session['usuario_actual'] = usuario_ingresado
-            session['perfil_actual'] = usuarios_db[usuario_ingresado]["perfil"]
+        # Verificamos si lo encontró y si la clave coincide
+        if usuario_db and usuario_db.clave == clave_ingresada:
+            session['usuario_actual'] = usuario_db.email
+            session['perfil_actual'] = usuario_db.perfil
+            return redirect(url_for('dashboard'))
+        
+        # Hardcodeamos tu admin temporalmente para que no pierdas acceso
+        elif usuario_ingresado == "dentalCare" and clave_ingresada == "123456":
+            session['usuario_actual'] = "dentalCare"
+            session['perfil_actual'] = "admin"
+            return redirect(url_for('dashboard'))
             
-            return redirect(url_for('dashboard')) # Redirige a la pantalla principal
         else:
-            # Mensaje de error si la clave está mal
             flash('Usuario o contraseña incorrecta') 
             
     return render_template('login.html')
@@ -292,35 +307,22 @@ def registro():
         nuevo_usuario = request.form.get('usuario')
         nueva_clave = request.form.get('clave')
 
-        with open("usuarios.json", "r") as f:
-            datos = json.load(f)
-
-        pacientes = datos.setdefault("paciente", {})
-        doctores = datos.setdefault("doctores", {})
-
-        # 1. Validar que el correo no esté en uso
-        if nuevo_usuario in pacientes.get("Usuario_socio", []) or \
-           nuevo_usuario in doctores.get("Usuario", []) or \
-           nuevo_usuario == "dentalCare":
+        # 1. Validar que el correo no esté en uso buscando en MySQL
+        usuario_existente = Usuario.query.filter_by(email=nuevo_usuario).first()
+        if usuario_existente or nuevo_usuario == "dentalCare":
             flash("Error: El usuario ya existe.")
             return redirect(url_for('registro'))
 
         # 2. Restringir el dominio a pacientes
         if "@gmail.com" in nuevo_usuario:
-            ids_existentes = pacientes.get("ids_socio", [])
-            nuevo_id = 1
-            while nuevo_id in ids_existentes:
-                nuevo_id += 1
+            # Creamos un "objeto" Usuario con los datos del formulario
+            nuevo_paciente = Usuario(email=nuevo_usuario, clave=nueva_clave, perfil='paciente')
+            
+            # Lo preparamos y lo guardamos en MySQL
+            db.session.add(nuevo_paciente)
+            db.session.commit()
 
-            pacientes.setdefault("Usuario_socio", []).append(nuevo_usuario)
-            pacientes.setdefault("Contraseña_socio", []).append(nueva_clave)
-            pacientes.setdefault("ids_socio", []).append(nuevo_id)
-
-            with open("usuarios.json", "w") as f:
-                json.dump(datos, f, indent=4)
-
-            # Enviamos el mensaje de éxito y lo mandamos directo al login
-            flash(f"¡Registro exitoso! Tu número de socio es: {nuevo_id}. Ya puedes iniciar sesión.")
+            flash(f"¡Registro exitoso en la Base de Datos! Ya puedes iniciar sesión.")
             return redirect(url_for('login'))
         else:
             flash("Error: Solo se permiten correos @gmail.com para registrar pacientes.")
@@ -420,5 +422,12 @@ def eliminar_doctor(id_doc):
     flash(mensaje)
     return redirect(url_for('ver_doctores'))
 
+
+
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    # Esto le dice a Flask que cree las tablas en MySQL si no existen
+    with app.app_context():
+        db.create_all()
+        print("Tablas creadas en MySQL exitosamente.")
+        
+    app.run(debug=True, port=5000)  
