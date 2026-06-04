@@ -252,12 +252,10 @@ def eliminar_turno(id_turno):
 
 @app.route('/agregar_doctor', methods=['GET', 'POST'])
 def agregar_doctor():
-    # Protección doble: tiene que estar logueado Y ser admin
     if 'usuario_actual' not in session or session.get('perfil_actual') != 'admin':
         flash("Acceso denegado: Solo los administradores pueden agregar doctores.")
         return redirect(url_for('dashboard'))
 
-    # Los tratamientos disponibles según tu código original
     tratamientos_disponibles = ['Control', 'Arreglo de caries', 'Ortodoncia', 'Extracción']
 
     if request.method == 'POST':
@@ -266,37 +264,26 @@ def agregar_doctor():
         clave = request.form.get('clave')
         tratamiento = request.form.get('tratamiento')
 
-        # Autogeneramos el usuario como hacías en Tkinter
-        nuevo_usuario = f"{apellido.lower()}{nombre[0].lower()}@dentalcare.com"
+        # Autogeneramos el email
+        nuevo_email = f"{apellido.lower()}{nombre[0].lower()}@dentalcare.com"
 
-        with open("usuarios.json", "r") as f:
-            datos = json.load(f)
-
-        doctores = datos.setdefault("doctores", {})
-        usuarios_existentes = doctores.get("Usuario", [])
-
-        if nuevo_usuario in usuarios_existentes:
-            flash(f"Error: El usuario {nuevo_usuario} ya existe.")
+        # 1. Verificamos en MySQL si el usuario ya existe
+        usuario_existente = Usuario.query.filter_by(email=nuevo_email).first()
+        if usuario_existente:
+            flash(f"Error: El usuario {nuevo_email} ya existe.")
             return redirect(url_for('agregar_doctor'))
 
-        # Buscamos el nuevo ID con un bucle while, igual que en tu base
-        ids_existentes = doctores.get("id", [])
-        nuevo_id = 1
-        while nuevo_id in ids_existentes:
-            nuevo_id += 1
+        # 2. Creamos la cuenta de Usuario en la BD
+        nuevo_usuario = Usuario(email=nuevo_email, clave=clave, perfil='medico')
+        db.session.add(nuevo_usuario)
+        db.session.commit() # Hacemos commit acá para que MySQL le asigne un ID (nuevo_usuario.id)
 
-        # Agregamos los datos a las listas paralelas
-        doctores.setdefault("id", []).append(nuevo_id)
-        doctores.setdefault("nombres", []).append(nombre)
-        doctores.setdefault("apellidos", []).append(apellido)
-        doctores.setdefault("tratamientos", []).append(tratamiento)
-        doctores.setdefault("Usuario", []).append(nuevo_usuario)
-        doctores.setdefault("Contraseña", []).append(clave)
+        # 3. Creamos el perfil de Doctor vinculado a ese Usuario
+        nuevo_doctor = Doctor(nombre=nombre, apellido=apellido, tratamiento=tratamiento, usuario_id=nuevo_usuario.id)
+        db.session.add(nuevo_doctor)
+        db.session.commit()
 
-        with open("usuarios.json", "w") as f:
-            json.dump(datos, f, indent=4)
-
-        flash(f"Doctor agregado exitosamente con el usuario: {nuevo_usuario}")
+        flash(f"Doctor agregado exitosamente a la BD con el usuario: {nuevo_email}")
         return redirect(url_for('dashboard'))
 
     return render_template('agregar_doctor.html', tratamientos=tratamientos_disponibles)
@@ -336,22 +323,23 @@ def ver_doctores():
         flash("Acceso denegado.")
         return redirect(url_for('dashboard'))
 
-    with open("usuarios.json", "r") as f:
-        datos = json.load(f)
-        
-    doctores_data = datos.get("doctores", {})
+    # Traemos todos los doctores de la tabla de MySQL
+    doctores_db = Doctor.query.all()
+    
     lista_doctores = []
     
     # Armamos la lista para enviarla al HTML
-    for i in range(len(doctores_data.get("id", []))):
-        doc = {
-            "id": doctores_data["id"][i],
-            "nombre": doctores_data["nombres"][i],
-            "apellido": doctores_data["apellidos"][i],
-            "tratamiento": doctores_data["tratamientos"][i],
-            "usuario": doctores_data["Usuario"][i]
-        }
-        lista_doctores.append(doc)
+    for doc in doctores_db:
+        # Buscamos en la tabla de Usuarios el email que le corresponde a este doctor
+        usuario_doc = Usuario.query.get(doc.usuario_id)
+        
+        lista_doctores.append({
+            "id": doc.id,
+            "nombre": doc.nombre,
+            "apellido": doc.apellido,
+            "tratamiento": doc.tratamiento,
+            "usuario": usuario_doc.email if usuario_doc else "Desconocido"
+        })
         
     return render_template('doctores.html', doctores=lista_doctores)
 
