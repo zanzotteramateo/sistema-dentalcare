@@ -2,11 +2,13 @@ import json
 import os
 from flask import Flask, render_template, request, redirect, url_for, session, flash
 from flask_sqlalchemy import SQLAlchemy
+from datetime import datetime
+
 
 app = Flask(__name__)
 app.secret_key = 'tu_clave_secreta_super_segura'
 
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:root@localhost/dentalcare_db'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:Nosenada123*@localhost/dentalcare_db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
@@ -87,57 +89,43 @@ def logout():
 
 @app.route('/turnos')
 def ver_turnos():
-    # Protegemos la ruta: si no hay sesión, al login
     if 'usuario_actual' not in session:
         return redirect(url_for('login'))
         
-    usuario = session['usuario_actual']
+    usuario_email = session['usuario_actual']
     perfil = session['perfil_actual']
+    usuario_actual = Usuario.query.filter_by(email=usuario_email).first()
     
-    # Leemos el JSON completo
-    with open("usuarios.json", "r") as f:
-        datos = json.load(f)
-        
-    turnos_data = datos.get("turnos", {})
+    # 1. Filtramos las consultas en MySQL directamente
+    if perfil == 'admin':
+        turnos_db = Turno.query.all()
+    elif perfil == 'paciente':
+        turnos_db = Turno.query.filter_by(paciente_id=usuario_actual.id).all()
+    elif perfil == 'medico':
+        doctor_actual = Doctor.query.filter_by(usuario_id=usuario_actual.id).first()
+        if doctor_actual:
+            turnos_db = Turno.query.filter_by(doctor_id=doctor_actual.id).all()
+        else:
+            turnos_db = []
+    
     turnos_filtrados = []
     
-    # Recorremos la cantidad total de turnos (basado en la longitud de la lista 'nombres')
-    cantidad_turnos = len(turnos_data.get("nombres", []))
-    
-    for i in range(cantidad_turnos):
-        # Armamos un diccionario temporal por cada turno
-        turno = {
-            "id": i + 1,
-            "nombre": turnos_data["nombres"][i],
-            "apellido": turnos_data["apellidos"][i],
-            "socio": turnos_data["numeros_socios"][i],
-            "horario": turnos_data["horarios"][i],
-            "tratamiento": turnos_data["tratamientos"][i],
-            "doctor": turnos_data["doctor_asignado"][i]
-        }
+    # 2. Preparamos los datos para mandarlos a la vista (HTML)
+    for t in turnos_db:
+        # Buscamos al doctor dueño del turno
+        doctor = Doctor.query.get(t.doctor_id)
+        doctor_str = f"Dr/a. {doctor.nombre} {doctor.apellido}" if doctor else "Doctor Eliminado"
         
-        # Filtramos igual que en tu Tkinter
-        if perfil == 'admin':
-            turnos_filtrados.append(turno)
-            
-        elif perfil == 'paciente':
-            pacientes = datos.get("paciente", {})
-            if usuario in pacientes.get("Usuario_socio", []):
-                idx_paciente = pacientes["Usuario_socio"].index(usuario)
-                id_socio = pacientes["ids_socio"][idx_paciente]
-                if turno["socio"] == id_socio:
-                    turnos_filtrados.append(turno)
-                    
-        elif perfil == 'medico':
-            doctores = datos.get("doctores", {})
-            if usuario in doctores.get("Usuario", []):
-                idx_doc = doctores["Usuario"].index(usuario)
-                # Recreamos el formato exacto de tu JSON: "Nombre Apellido ( ID: X)"
-                nombre_doc = f"{doctores['nombres'][idx_doc]} {doctores['apellidos'][idx_doc]} ( ID: {doctores['id'][idx_doc]})"
-                if turno["doctor"] == nombre_doc:
-                    turnos_filtrados.append(turno)
-                    
-    # Mandamos los turnos filtrados a una nueva plantilla HTML
+        turnos_filtrados.append({
+            "id": t.id,
+            "nombre": t.nombre_paciente,
+            "apellido": t.apellido_paciente,
+            "socio": t.paciente_id,
+            "horario": t.fecha_hora.strftime("%Y-%m-%d %H:%M"),
+            "tratamiento": t.tratamiento,
+            "doctor": doctor_str
+        })
+        
     return render_template('turnos.html', turnos=turnos_filtrados, perfil=perfil)
 
 @app.route('/ingresar_turno', methods=['GET', 'POST'])
@@ -146,51 +134,59 @@ def ingresar_turno():
         return redirect(url_for('login'))
         
     perfil = session['perfil_actual']
+    usuario_email = session['usuario_actual']
     
-    # Los médicos no pueden ingresar turnos, tal como en tu lógica original
     if perfil == 'medico':
         flash('Los médicos no pueden ingresar turnos.')
         return redirect(url_for('dashboard'))
 
-    # Abrimos el JSON para leer los doctores y para actualizar los turnos
-    with open("usuarios.json", "r") as f:
-        datos = json.load(f)
-
-    # Preparamos la lista de doctores para el formulario
-    doctores_data = datos.get("doctores", {})
-    doctores_lista = []
-    for i in range(len(doctores_data.get("id", []))):
-        doc_str = f"{doctores_data['nombres'][i]} {doctores_data['apellidos'][i]} ( ID: {doctores_data['id'][i]})"
-        doctores_lista.append(doc_str)
+    # 1. Traemos doctores de la base de datos para armar el selector
+    doctores_db = Doctor.query.all()
+    doctores_lista = [f"{d.nombre} {d.apellido} ( ID: {d.id})" for d in doctores_db]
 
     if request.method == 'POST':
-        # Capturamos lo que el usuario escribió en el HTML
         nombre = request.form.get('nombre')
         apellido = request.form.get('apellido')
-        socio = request.form.get('socio', type=int)
+        socio_id = request.form.get('socio', type=int)
         fecha = request.form.get('fecha')
         hora = request.form.get('hora')
         tratamiento = request.form.get('tratamiento')
-        doctor_sel = request.form.get('doctor')
+        doctor_sel = request.form.get('doctor') 
 
-        # Formateamos la fecha y hora para que coincida con tu JSON
-        nuevo_horario = f"{fecha} {hora}"
+        # Extraemos el ID del doctor del string "Nombre Apellido ( ID: X)"
+        doctor_id_str = doctor_sel.split('ID: ')[1].replace(')', '').strip()
+        doctor_id = int(doctor_id_str)
 
-        # Actualizamos las listas paralelas dentro de la clave "turnos"
-        turnos = datos.setdefault("turnos", {})
-        turnos.setdefault("nombres", []).append(nombre)
-        turnos.setdefault("apellidos", []).append(apellido)
-        turnos.setdefault("numeros_socios", []).append(socio)
-        turnos.setdefault("horarios", []).append(nuevo_horario)
-        turnos.setdefault("tratamientos", []).append(tratamiento)
-        turnos.setdefault("doctor_asignado", []).append(doctor_sel)
+        # Seguridad: Si es un paciente logueado, forzamos que se guarde con su propio ID
+        if perfil == 'paciente':
+            paciente_actual = Usuario.query.filter_by(email=usuario_email).first()
+            socio_id = paciente_actual.id
+        else:
+            # Si es admin, validamos que el número de socio exista en MySQL
+            paciente_existente = Usuario.query.get(socio_id)
+            if not paciente_existente or paciente_existente.perfil != 'paciente':
+                flash('Error: El número de socio no existe o no pertenece a un paciente.')
+                return redirect(url_for('ingresar_turno'))
 
-        # Sobreescribimos el archivo JSON con los nuevos datos
-        with open("usuarios.json", "w") as f:
-            json.dump(datos, f, indent=4)
+        # Convertimos los textos de fecha y hora a un objeto DateTime real
+        fecha_hora_str = f"{fecha} {hora}"
+        fecha_hora_obj = datetime.strptime(fecha_hora_str, "%Y-%m-%d %H:%M")
 
-        flash('¡Turno guardado con éxito!')
-        return redirect(url_for('ver_turnos')) # Lo mandamos a ver la tabla
+        # Creamos el turno y lo vinculamos a las claves foráneas
+        nuevo_turno = Turno(
+            nombre_paciente=nombre,
+            apellido_paciente=apellido,
+            fecha_hora=fecha_hora_obj,
+            tratamiento=tratamiento,
+            paciente_id=socio_id,
+            doctor_id=doctor_id
+        )
+        
+        db.session.add(nuevo_turno)
+        db.session.commit()
+
+        flash('¡Turno guardado con éxito en MySQL!')
+        return redirect(url_for('ver_turnos'))
 
     return render_template('ingresar_turno.html', perfil=perfil, doctores=doctores_lista)
 
@@ -200,54 +196,34 @@ def eliminar_turno(id_turno):
     if 'usuario_actual' not in session:
         return redirect(url_for('login'))
         
-    usuario = session['usuario_actual']
+    usuario_email = session['usuario_actual']
     perfil = session['perfil_actual']
     
-    with open("usuarios.json", "r") as f:
-        datos = json.load(f)
-        
-    turnos = datos.get("turnos", {})
-    
-    # En nuestra tabla HTML, el ID mostrado es el índice de la lista + 1
-    idx = id_turno - 1
-    
-    # Validamos que el índice exista en las listas
-    if idx < 0 or idx >= len(turnos.get("nombres", [])):
-        flash("Error: Turno no encontrado.")
+    # Buscamos el turno por su ID Principal
+    turno = Turno.query.get(id_turno)
+    if not turno:
+        flash("Error: Turno no encontrado en la Base de Datos.")
         return redirect(url_for('ver_turnos'))
         
-    # Validaciones de seguridad copiadas de tu lógica original
-    if perfil == 'paciente':
-        pacientes = datos.get("paciente", {})
-        idx_paciente = pacientes["Usuario_socio"].index(usuario)
-        id_socio_paciente = pacientes["ids_socio"][idx_paciente]
+    usuario_actual = Usuario.query.filter_by(email=usuario_email).first()
         
-        if turnos["numeros_socios"][idx] != id_socio_paciente:
+    # Validaciones de seguridad para que nadie borre turnos ajenos
+    if perfil == 'paciente':
+        if turno.paciente_id != usuario_actual.id:
             flash("Acceso denegado: Ese turno no te pertenece.")
             return redirect(url_for('ver_turnos'))
             
     elif perfil == 'medico':
-        doctores = datos.get("doctores", {})
-        idx_doc = doctores["Usuario"].index(usuario)
-        nombre_mi_doc = f"{doctores['nombres'][idx_doc]} {doctores['apellidos'][idx_doc]} ( ID: {doctores['id'][idx_doc]})"
-        
-        if turnos["doctor_asignado"][idx] != nombre_mi_doc:
+        doctor_actual = Doctor.query.filter_by(usuario_id=usuario_actual.id).first()
+        if not doctor_actual or turno.doctor_id != doctor_actual.id:
             flash("Acceso denegado: Ese turno no está asignado a usted.")
             return redirect(url_for('ver_turnos'))
 
-    # Si todo está correcto, eliminamos el elemento de todas las listas paralelas
-    turnos["nombres"].pop(idx)
-    turnos["apellidos"].pop(idx)
-    turnos["numeros_socios"].pop(idx)
-    turnos["horarios"].pop(idx)
-    turnos["tratamientos"].pop(idx)
-    turnos["doctor_asignado"].pop(idx)
-    
-    # Sobreescribimos el JSON
-    with open("usuarios.json", "w") as f:
-        json.dump(datos, f, indent=4)
+    # Si todo está correcto, lo eliminamos de MySQL
+    db.session.delete(turno)
+    db.session.commit()
         
-    flash("Turno eliminado con éxito.")
+    flash("Turno eliminado con éxito de MySQL.")
     return redirect(url_for('ver_turnos'))
 
 @app.route('/agregar_doctor', methods=['GET', 'POST'])
