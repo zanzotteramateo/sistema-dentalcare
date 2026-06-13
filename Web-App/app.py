@@ -324,64 +324,47 @@ def eliminar_doctor(id_doc):
     if 'usuario_actual' not in session or session.get('perfil_actual') != 'admin':
         return redirect(url_for('dashboard'))
         
-    with open("usuarios.json", "r") as f:
-        datos = json.load(f)
-        
-    doctores = datos.get("doctores", {})
-    turnos = datos.get("turnos", {})
-    
-    if id_doc not in doctores.get("id", []):
-        flash("Error: Doctor no encontrado.")
+    # 1. Buscamos al doctor que queremos eliminar en MySQL
+    doctor_eliminar = Doctor.query.get(id_doc)
+    if not doctor_eliminar:
+        flash("Error: Doctor no encontrado en la base de datos.")
         return redirect(url_for('ver_doctores'))
         
-    # Encontramos la posición exacta del doctor a borrar en las listas
-    idx_doc = doctores["id"].index(id_doc)
-    tratamiento_elim = doctores["tratamientos"][idx_doc]
+    tratamiento_elim = doctor_eliminar.tratamiento
     
-    # IMPORTANTE: Recreamos cómo figura escrito en los turnos
-    nombre_doc_elim = f"{doctores['nombres'][idx_doc]} {doctores['apellidos'][idx_doc]} ( ID: {id_doc})"
-    
-    # 1. Buscamos si existe OTRO doctor que haga el mismo tratamiento
-    otros_doctores_idx = [i for i, trat in enumerate(doctores["tratamientos"]) 
-                          if trat == tratamiento_elim and doctores["id"][i] != id_doc]
+    # 2. Buscamos si existe OTRO doctor que haga el mismo tratamiento 
+    # (Excluimos al que estamos por borrar)
+    doctor_reemplazo = Doctor.query.filter(Doctor.tratamiento == tratamiento_elim, Doctor.id != id_doc).first()
                           
-    # 2. Buscamos los índices de los turnos que tenía asignado el doctor despedido
-    turnos_asignados_idx = [i for i, doc_asig in enumerate(turnos.get("doctor_asignado", [])) 
-                            if doc_asig == nombre_doc_elim]
+    # 3. Traemos todos los turnos que tenía asignados el doctor despedido
+    turnos_afectados = Turno.query.filter_by(doctor_id=id_doc).all()
                             
-    mensaje = f"Doctor/a {doctores['apellidos'][idx_doc]} eliminado/a exitosamente."
+    mensaje = f"Doctor/a {doctor_eliminar.apellido} eliminado/a exitosamente."
     
     # Si el doctor tenía turnos pendientes, entra a la lógica de rescate
-    if turnos_asignados_idx:
-        if otros_doctores_idx:
-            # Hay reemplazo: le pasamos los turnos al primer doctor alternativo
-            nuevo_idx = otros_doctores_idx[0]
-            nuevo_doc_str = f"{doctores['nombres'][nuevo_idx]} {doctores['apellidos'][nuevo_idx]} ( ID: {doctores['id'][nuevo_idx]})"
-            
-            for i in turnos_asignados_idx:
-                turnos["doctor_asignado"][i] = nuevo_doc_str
-            mensaje += f" Se reasignaron {len(turnos_asignados_idx)} turno(s) automáticamente al Dr/a. {doctores['apellidos'][nuevo_idx]}."
+    if turnos_afectados:
+        if doctor_reemplazo:
+            # Hay reemplazo: Simplemente cambiamos el ID del doctor en cada turno
+            for turno in turnos_afectados:
+                turno.doctor_id = doctor_reemplazo.id
+            mensaje += f" Se reasignaron {len(turnos_afectados)} turno(s) automáticamente al Dr/a. {doctor_reemplazo.apellido}."
         else:
-            # No hay reemplazo: borramos los turnos afectados (de atrás hacia adelante para no romper los índices)
-            for i in sorted(turnos_asignados_idx, reverse=True):
-                turnos["nombres"].pop(i)
-                turnos["apellidos"].pop(i)
-                turnos["numeros_socios"].pop(i)
-                turnos["horarios"].pop(i)
-                turnos["tratamientos"].pop(i)
-                turnos["doctor_asignado"].pop(i)
-            mensaje += f" Se cancelaron {len(turnos_asignados_idx)} turno(s) porque no hay médicos disponibles para ese tratamiento."
+            # No hay reemplazo: borramos los turnos directamente de la base de datos
+            for turno in turnos_afectados:
+                db.session.delete(turno)
+            mensaje += f" Se cancelaron {len(turnos_afectados)} turno(s) porque no hay médicos disponibles para ese tratamiento."
             
-    # Finalmente, borramos al doctor de todas las listas paralelas
-    doctores["id"].pop(idx_doc)
-    doctores["nombres"].pop(idx_doc)
-    doctores["apellidos"].pop(idx_doc)
-    doctores["tratamientos"].pop(idx_doc)
-    doctores["Usuario"].pop(idx_doc)
-    doctores["Contraseña"].pop(idx_doc)
+    # 4. Eliminamos al doctor
+    usuario_asociado = Usuario.query.get(doctor_eliminar.usuario_id)
     
-    with open("usuarios.json", "w") as f:
-        json.dump(datos, f, indent=4)
+    db.session.delete(doctor_eliminar)
+    
+    # También borramos su cuenta de usuario para que no pueda volver a iniciar sesión
+    if usuario_asociado:
+        db.session.delete(usuario_asociado)
+        
+    # Guardamos todos los cambios (reasignaciones y borrados) de golpe en la BD
+    db.session.commit()
         
     flash(mensaje)
     return redirect(url_for('ver_doctores'))
